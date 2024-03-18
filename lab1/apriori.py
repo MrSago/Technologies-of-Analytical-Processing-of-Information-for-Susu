@@ -108,9 +108,9 @@ def apriori(
     """Алгоритм Априори для поиска часто встречающихся множеств элементов.
 
     Аргументы:
-        data_set (List[Set[Any]]): Входная данная.
+        data_set (List[Set[Any]]): Входные данные.
         min_support (int): Порог поддержки.
-        order (Optional[OrderedType]): Тип применяемого порядка.
+        order (Optional[OrderedType]): Порядок сортировки.
 
     Возвращает:
         List[Dict[FrozenSet[Any], float]]: Список часто встречающихся множеств элементов и их поддержки.
