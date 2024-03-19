@@ -1,3 +1,4 @@
+import apyori
 import unittest
 from apriori import (
     OrderedType,
@@ -100,6 +101,36 @@ class TestAprioriAlgorithm(unittest.TestCase):
         self.assertEqual(
             apriori(data_set, min_support, OrderedType.LEXICAL_ASCENDING), expected
         )
+
+    def test_apriori_with_apyori(self):
+        data_set = [
+            {"хлеб", "молоко"},
+            {"хлеб", "печенье", "пиво", "яйца"},
+            {"молоко", "печенье", "пиво", "кола"},
+            {"хлеб", "молоко", "печенье", "пиво"},
+            {"хлеб", "молоко", "печенье", "кола"},
+        ]
+        min_support = 0.5
+
+        apriori_result = apriori(data_set, min_support, OrderedType.LEXICAL_ASCENDING)
+        apyori_result = apyori.apriori(data_set, min_support=min_support)
+        apyori_converted = self._convert_apyori_result(apyori_result)
+
+        self.assertEqual(apriori_result, apyori_converted)
+
+    def _convert_apyori_result(self, apyori_result):
+        apyori_adapted = []
+        k = 1
+        transaction = {}
+        for rule in apyori_result:
+            if len(rule.items) > k:
+                apyori_adapted.append(transaction)
+                transaction = {}
+                k += 1
+            transaction[rule.items] = rule.support
+        if transaction:
+            apyori_adapted.append(transaction)
+        return apyori_adapted
 
 
 if __name__ == "__main__":
