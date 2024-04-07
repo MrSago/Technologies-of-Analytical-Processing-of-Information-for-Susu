@@ -84,7 +84,9 @@ class TestAprioriAlgorithm(unittest.TestCase):
             {"хлеб", "молоко", "печенье", "кола"},
         ]
         min_support = 0.5
-        expected = [
+        confidence_threshold = 0.5
+
+        expected_supports = [
             {
                 frozenset(["пиво"]): 0.6,
                 frozenset(["хлеб"]): 0.8,
@@ -98,9 +100,29 @@ class TestAprioriAlgorithm(unittest.TestCase):
                 frozenset(["печенье", "молоко"]): 0.6,
             },
         ]
-        self.assertEqual(
-            apriori(data_set, min_support, OrderedType.LEXICAL_ASCENDING), expected
+        expected_rules = frozenset(
+            [
+                (frozenset({"печенье"}), frozenset({"молоко"}), 0.7499999999999999),
+                (frozenset({"молоко"}), frozenset({"печенье"}), 0.7499999999999999),
+                (frozenset({"хлеб"}), frozenset({"молоко"}), 0.7499999999999999),
+                (frozenset({"молоко"}), frozenset({"хлеб"}), 0.7499999999999999),
+                (frozenset({"пиво"}), frozenset({"печенье"}), 1.0),
+                (frozenset({"печенье"}), frozenset({"пиво"}), 0.7499999999999999),
+                (frozenset({"хлеб"}), frozenset({"печенье"}), 0.7499999999999999),
+                (frozenset({"печенье"}), frozenset({"хлеб"}), 0.7499999999999999),
+            ]
         )
+
+        supports, rules = apriori(
+            data_set,
+            min_support,
+            confidence_threshold,
+            OrderedType.LEXICAL_ASCENDING,
+        )
+        rules = frozenset(rules)
+
+        self.assertEqual(supports, expected_supports)
+        self.assertEqual(rules, expected_rules)
 
     def test_apriori_with_apyori(self):
         data_set = [
@@ -111,12 +133,15 @@ class TestAprioriAlgorithm(unittest.TestCase):
             {"хлеб", "молоко", "печенье", "кола"},
         ]
         min_support = 0.5
+        confidence_threshold = 0.5
 
-        apriori_result = apriori(data_set, min_support, OrderedType.LEXICAL_ASCENDING)
-        apyori_result = apyori.apriori(data_set, min_support=min_support)
-        apyori_converted = self._convert_apyori_result(apyori_result)
+        apriori_supports, apriori_rules = apriori(
+            data_set, min_support, confidence_threshold, OrderedType.LEXICAL_ASCENDING
+        )
+        apyori_supports = apyori.apriori(data_set, min_support=min_support)
+        apyori_supports_converted = self._convert_apyori_result(apyori_supports)
 
-        self.assertEqual(apriori_result, apyori_converted)
+        self.assertEqual(apriori_supports, apyori_supports_converted)
 
     def _convert_apyori_result(self, apyori_result):
         apyori_adapted = []

@@ -8,6 +8,7 @@ from typing import (
     Tuple,
 )
 from enum import Enum
+from itertools import combinations
 
 
 class OrderedType(int, Enum):
@@ -68,7 +69,7 @@ def _apriori_gen(item_set: Set[Tuple[int]], length: int) -> Set[Tuple[int]]:
 
 
 def _sort_items(
-    dict_items: Dict[Any, float], ordered: "OrderedType"
+    dict_items: Dict[Any, float], ordered: OrderedType
 ) -> Dict[Any, float]:
     """Сортирует элементы в словаре по поддержке или лексикографическому порядку.
 
@@ -77,7 +78,7 @@ def _sort_items(
         ordered (OrderedType): Тип порядка сортировки.
 
     Возвращает:
-        Dict[Any, float]: Сorted словарь.
+        Dict[Any, float]: Cортированный словарь.
     """
     if ordered == OrderedType.SUPPORT_ASCENDING:
         return {k: v for k, v in sorted(dict_items.items(), key=lambda item: item[1])}
@@ -100,9 +101,39 @@ def _sort_items(
         )
 
 
+def _generate_rules(L, confidence_threshold):
+    """Генерация ассоциативных правил из часто встречающихся наборов.
+
+    Аргументы:
+        L (List[Dict[FrozenSet[Any], float]]): Список словарей с часто встречающимися наборами.
+        confidence_threshold (float): Порог уверенности.
+
+    Возвращает:
+        List[Tuple[FrozenSet, FrozenSet, float]]: Список сгенерированных правил в формате (предпосылка, заключение, уверенность).
+    """
+    rules = []
+    # Итерация по всем наборам начиная со второго уровня (наборы размера 2 и более)
+    for frequent_itemsets in L[1:]:
+        for itemset, support in frequent_itemsets.items():
+            for i in range(1, len(itemset)):
+                # Генерация всех возможных предпосылок размера i
+                antecedents = combinations(itemset, i)
+                itemset_support = frequent_itemsets[itemset]
+                for antecedent in antecedents:
+                    antecedent = frozenset(antecedent)
+                    consequent = itemset - antecedent
+                    antecedent_support = L[i - 1][antecedent]
+                    # Вычисление уверенности для правила
+                    confidence = itemset_support / antecedent_support
+                    if confidence >= confidence_threshold:
+                        rules.append((antecedent, consequent, confidence))
+    return rules
+
+
 def apriori(
     data_set: List[Set[Any]],
     min_support: int,
+    confidence_threshold: float,
     order: Optional[OrderedType] = None,
 ) -> List[Dict[FrozenSet[Any], float]]:
     """Алгоритм Априори для поиска часто встречающихся множеств элементов.
@@ -110,10 +141,14 @@ def apriori(
     Аргументы:
         data_set (List[Set[Any]]): Входные данные.
         min_support (int): Порог поддержки.
+        confidence_threshold (float): Порог уверенности.
         order (Optional[OrderedType]): Порядок сортировки.
 
     Возвращает:
-        List[Dict[FrozenSet[Any], float]]: Список часто встречающихся множеств элементов и их поддержки.
+        Tuple[
+            List[Dict[FrozenSet[Any], float]],
+            List[Tuple[FrozenSet[Any], FrozenSet[Any], float]]
+        ]: Список часто встречающихся наборов элементов и правил в формате (предпосылка, заключение, уверенность).
     """
     # Генерируем начальные кандидаты для часто встречающихся множеств (C1)
     C1: Set[FrozenSet[Any]] = {
@@ -142,4 +177,5 @@ def apriori(
         L.append(Lk)
         k += 1
 
-    return L
+    rules = _generate_rules(L, confidence_threshold)
+    return L, rules

@@ -1,6 +1,7 @@
 from apriori import apriori, OrderedType
 import matplotlib.pyplot as plt
 import pandas as pd
+from prettytable import PrettyTable
 from time import time
 from typing import List, Tuple, Dict, Set, FrozenSet
 
@@ -16,8 +17,30 @@ def print_apriori_result(item_sets: List[Dict[FrozenSet, float]]):
     """
     for i, level in enumerate(item_sets):
         print(f"Частота предметов из набора длины {i+1}:")
+        table = PrettyTable(["Предметы", "Поддержка"])
+        table.align["Предметы"] = "l"
+        table.align["Поддержка"] = "l"
         for item_set, support in level.items():
-            print(f"    Предметы: {set(item_set)}, Поддержка: {round(support, 8):.8f}")
+            table.add_row([set(item_set), round(support, 6)])
+        print(table)
+
+
+def print_rules(rules: List[Tuple[FrozenSet, FrozenSet, float]]):
+    """Выводит результат алгоритма Априори.
+
+    Аргументы:
+        rules (List[Tuple[FrozenSet, FrozenSet, float]]): Результат работы алгоритма Априори.
+    """
+    table = PrettyTable(["Предпосылка", "Заключение", "Достоверность"])
+    table.align["Предпосылка"] = "l"
+    table.align["Заключение"] = "l"
+    table.align["Достоверность"] = "l"
+    for rule in rules:
+        antecedent = set(rule[0])
+        consequent = set(rule[1])
+        confidence = rule[2]
+        table.add_row([antecedent, consequent, round(confidence, 6)])
+    print(table)
 
 
 def parse_csv_file(filename: str) -> List[Set[str]]:
@@ -42,8 +65,10 @@ def parse_csv_file(filename: str) -> List[Set[str]]:
 
 
 def run_apriori_file(
-    filename: str, min_support: float
-) -> Tuple[List[Dict[FrozenSet, float]], float]:
+    filename: str, min_support: float, confidence_threshold: float
+) -> Tuple[
+    List[Dict[FrozenSet, float]], List[Tuple[FrozenSet, FrozenSet, float]], float
+]:
     """Запускает алгоритм Априори для файла и возращает результат и время выполнения.
 
     Аргументы:
@@ -51,15 +76,16 @@ def run_apriori_file(
         min_support (float): Порог поддержки.
 
     Возвращает:
-        Tuple[List[Dict[FrozenSet, float]], float]: Результат работы алгоритма Априори и время выполнения.
+        Tuple[List[Dict[FrozenSet, float]], List[Tuple[FrozenSet, FrozenSet, float]], float]:
+            Результат работы алгоритма Априори и время выполнения.
     """
     transactions = parse_csv_file(filename)
 
     start = time()
-    frequent_item_sets = apriori(transactions, min_support)
+    frequent_item_sets, rules = apriori(transactions, min_support, confidence_threshold)
     end = time()
 
-    return frequent_item_sets, end - start
+    return frequent_item_sets, rules, end - start
 
 
 def make_figure_bar(
@@ -91,7 +117,10 @@ def make_figure_bar(
 
 
 def first_task():
-    print("Задание №1. Демонстрация алгоритма Априори для небольшого набора данных.")
+    print(
+        "Задание №1. Демонстрация алгоритма Априори для небольшого набора данных.",
+        end="\n\n",
+    )
 
     transactions: List[Set[str]] = [
         {"хлеб", "молоко"},
@@ -101,71 +130,89 @@ def first_task():
         {"хлеб", "молоко", "печенье", "кола"},
     ]
 
-    min_support: float = 0.5
+    min_support: float = 0.1
+    confidence_threshold: float = 0.1
 
-    frequent_item_sets: List[Set[FrozenSet[str]]] = apriori(
-        transactions, min_support, OrderedType.LEXICAL_ASCENDING
+    frequent_item_sets, rules = apriori(
+        transactions, min_support, confidence_threshold, OrderedType.LEXICAL_ASCENDING
     )
 
     print("Тестовый набор:")
     for transaction in transactions:
         print(f"Транзакция: {transaction}")
+    print("", end="\n\n")
+
     print(f"Минимальная поддержка: {min_support}")
+    print(f"Порог достоверности: {confidence_threshold}", end="\n\n")
+
     print_apriori_result(frequent_item_sets)
+    print_rules(rules)
     print("", end="\n")
 
 
 def second_task():
-    print("Задание №2. Экспериментальная проверка алгоритма Apriori.")
+    print("Задание №2. Экспериментальная проверка алгоритма Apriori.", end="\n\n")
 
-    frequent_item_sets, calc_time = run_apriori_file(TEST_DATA_FILENAME, 0.01)
+    min_support: float = 0.01
+    confidence_threshold: float = 0.3
+
+    frequent_item_sets, rules, calc_time = run_apriori_file(
+        TEST_DATA_FILENAME, min_support, confidence_threshold
+    )
+
+    print(f"Файл с тестовыми данными: {TEST_DATA_FILENAME}")
+    print(f"Минимальная поддержка: {min_support}")
+    print(f"Порог достоверности: {confidence_threshold}", end="\n\n")
 
     print_apriori_result(frequent_item_sets)
+    print("\nПравила:", end="\n")
+    print_rules(rules)
 
     print(f"Время работы алгоритма: {round(calc_time, 3):.3f} секунд", end="\n\n")
 
 
 def third_task():
-    print("Задание №3. Визуализация результатов алгоритма Apriori.")
+    print("Задание №3. Визуализация результатов алгоритма Apriori.", end="\n\n")
 
-    theresholds: List[float] = [0.01, 0.03, 0.05, 0.08, 0.10, 0.13, 0.15]
+    min_support: float = 0.01
+    confidence_thresholds: List[float] = [0.1, 0.2, 0.3, 0.4, 0.5]
 
-    execution_times: List[float] = []
     frequent_item_sets_list: List[List[Set[OrderedType]]] = []
-    for threshold in theresholds:
-        print(f"Старт алгоритма с порогом поддержки: {threshold}...")
-        item_sets, calc_time = run_apriori_file(TEST_DATA_FILENAME, threshold)
+    rules_list: List[List[Tuple[FrozenSet, FrozenSet, float]]] = []
+    execution_times: List[float] = []
+    for threshold in confidence_thresholds:
+        print(f"Старт алгоритма с порогом достоверности: {threshold}...")
+        item_sets, rules, calc_time = run_apriori_file(
+            TEST_DATA_FILENAME, min_support, threshold
+        )
         frequent_item_sets_list.append(item_sets)
+        rules_list.append(rules)
         execution_times.append(calc_time)
         print(f"Время работы алгоритма: {round(calc_time, 3):.3f} секунд")
     print("", end="\n")
 
-    freq_cnts: List[int] = [
-        sum(len(item_set) for item_set in level) for level in frequent_item_sets_list
-    ]
-
     make_figure_bar(
-        theresholds,
+        confidence_thresholds,
         execution_times,
-        "Порог поддержки",
+        "Порог достоверности",
         "Время работы алгоритма (секунды)",
-        "Зависимость времени работы алгоритма от порога поддержки",
+        "Зависимость времени работы алгоритма от порога достоверности",
     )
 
     make_figure_bar(
-        theresholds,
-        freq_cnts,
-        "Порог поддержки",
-        "Количество частых наборов",
-        "Зависимость количества частых наборов от порога поддержки",
+        confidence_thresholds,
+        [len(r) for r in rules_list],
+        "Порог достоверности",
+        "Количество правил",
+        "Зависимость количества найденных правил от порога достоверности",
     )
 
     plt.show()
 
 
 def main():
-    first_task()
-    second_task()
+    # first_task()
+    # second_task()
     third_task()
 
 
